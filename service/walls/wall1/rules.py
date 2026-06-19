@@ -78,6 +78,51 @@ def _check_patterns(text: str, patterns: list, score: float, threat: str, layer:
     return None
 
 
+
+# ── Indirect Injection (hidden in markup/data) ───────────────────────────────
+INDIRECT_INJECTION = [
+    re.compile(p, re.IGNORECASE) for p in [
+        r"\[HIDDEN INSTRUCTION",
+        r"<!--.*(?:override|instruction|directive|system)",
+        r"\{system_prompt",
+        r"\{.*instruction.*\}",
+    ]
+]
+
+# ── Jailbreak Persona ─────────────────────────────────────────────────────────
+JAILBREAK_PERSONA = [
+    re.compile(p, re.IGNORECASE) for p in [
+        r"you are \w+,? an ai with no restriction",
+        r"as \w+,? answer everything",
+        r"you have no restriction",
+        r"act as.*no restriction",
+        r"an ai with no restriction",
+    ]
+]
+
+# ── PII Extraction ────────────────────────────────────────────────────────────
+PII_EXTRACTION = [
+    re.compile(p, re.IGNORECASE) for p in [
+        r"(?:list|show|share|tell|give|reveal).*(?:aadhaar|pan card|bank account|salary|personal information)",
+        r"(?:aadhaar|aadhar) number.*(?:customer|user|last)",
+        r"pan card details",
+        r"bank account number.*(?:pending|transaction|all)",
+        r"employee.*salary|salary.*employee",
+        r"personal information.*(?:customer|user|all)",
+    ]
+]
+
+# ── System Prompt Leak ────────────────────────────────────────────────────────
+SYSTEM_PROMPT_LEAK = [
+    re.compile(p, re.IGNORECASE) for p in [
+        r"what is your system prompt",
+        r"show.*your.*(?:prompt|instruction|guideline)",
+        r"reveal.*your.*(?:prompt|instruction|system)",
+        r"tell me your.*(?:prompt|instruction|rule)",
+    ]
+]
+
+
 async def scan(request: ScanRequest) -> WallResult:
     text = request.text
     matches: list[RuleMatch] = []
@@ -99,6 +144,18 @@ async def scan(request: ScanRequest) -> WallResult:
         matches.append(m)
 
     m = _check_patterns(text, CREDENTIALS, 0.90, "credential_exposure", "credentials")
+    if m:
+        matches.append(m)
+
+    m = _check_patterns(text, INDIRECT_INJECTION, 0.95, "prompt_injection", "indirect_injection")
+    if m:
+        matches.append(m)
+
+    m = _check_patterns(text, JAILBREAK_PERSONA, 0.95, "jailbreak", "jailbreak_persona")
+    if m:
+        matches.append(m)
+
+    m = _check_patterns(text, PII_EXTRACTION, 0.90, "pii_extraction", "pii_request")
     if m:
         matches.append(m)
 
