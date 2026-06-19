@@ -7,10 +7,18 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 
 MIT_DATASETS = [
+    # Lakera MIT datasets
     ("Lakera/gandalf_ignore_instructions", "train", "prompt", 1),
-    ("Lakera/mosscap_prompt_injection", "train", "prompt", 1),
-    ("Lakera/gandalf_summarization", "train", "prompt", 1),
-    ("deepset/prompt-injections", "train", "text", "label"),
+    ("Lakera/mosscap_prompt_injection",    "train", "prompt", 1),
+    ("Lakera/gandalf_summarization",       "train", "prompt", 1),
+    # deepset
+    ("deepset/prompt-injections",          "train", "text", "label"),
+    # HackAPrompt — 600K real competition attack prompts (MIT)
+    # ("hackaprompt/hackaprompt-dataset", "train", "user_input", 1),  # gated
+    # TensorTrust — 120K prompt injection attacks (MIT)
+    ("lakeraai/tensortrust-data",          "train", "pre_prompt", 1),
+    # Jailbreak LLMs dataset (MIT)
+    ("jackhhao/jailbreak-classification",  "train", "prompt", "label"),
 ]
 
 
@@ -40,13 +48,19 @@ def prepare(output_path: Path = DATA_DIR / "train.jsonl") -> None:
             print(f"  Warning: {e}")
 
     # Add built-in Diviqra attack corpus as positive examples
-    from redteam.attacks import (
-        direct_injection, hindi_attacks, indirect_injection,
-        jailbreak, pii_extraction, system_prompt_leak,
-    )
-    for module in [direct_injection, indirect_injection, jailbreak, pii_extraction, system_prompt_leak, hindi_attacks]:
-        for attack in module.load():
-            samples.append({"text": attack.prompt, "label": 1, "source": "diviqra"})
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent.parent / "service"))
+    try:
+        from redteam.attacks import (
+            direct_injection, hindi_attacks, indirect_injection,
+            jailbreak, pii_extraction, system_prompt_leak,
+        )
+        for module in [direct_injection, indirect_injection, jailbreak,
+                       pii_extraction, system_prompt_leak, hindi_attacks]:
+            for attack in module.load():
+                samples.append({"text": attack.prompt, "label": 1, "source": "diviqra"})
+    except Exception as e:
+        print(f"  Warning: Could not load Diviqra attack corpus: {e}")
 
     with open(output_path, "w") as f:
         for s in samples:
