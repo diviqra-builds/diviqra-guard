@@ -96,7 +96,7 @@ async def _run_attack(run_id: str, attack: dict) -> dict:
                     "text": attack["prompt"],
                     "direction": "ingress",
                     "agent_type": attack["agent_type"],
-                    "company_id": "redteam",
+                    "company_id": "00000000-0000-0000-0000-000000000000",
                     "profile": "balanced",
                     "language": attack.get("language", "en"),
                 },
@@ -183,6 +183,15 @@ async def run(mode: str = "smoke", agent_type: str | None = None) -> str:
 
     metrics = scorer.compute(run_id, results)
     report = reporter.generate(run_id, metrics, results)
+
+    # Save results to DB
+    try:
+        from service.main import _session_factory
+        async with _session_factory() as session:
+            await _save_results(session, run_id, results)
+        log.info("redteam.results_saved", run_id=run_id, count=len(results))
+    except Exception as exc:
+        log.warning("redteam.save_failed", error=str(exc))
 
     log.info(
         "redteam.run_complete",

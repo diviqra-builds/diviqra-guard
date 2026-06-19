@@ -243,4 +243,4 @@ async def redteam_results(
     detected = sum(1 for i in items if i.get("detected"))
     detection_rate = round(detected / total, 3) if total > 0 else 0.0
 
-    return {"total": total, "detection_rate": detection_rate, "items": items}
+    return {"total": total, "detected": detected, "missed": total - detected, "detection_rate": detection_rate, "items": items}
