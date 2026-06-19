@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     GUARD_PORT: int = 7008
     GUARD_WORKERS: int = 2
 
-    CLASSIFIER_MODEL_PATH: str = "service/models/distilbert-guard.onnx"
+    CLASSIFIER_MODEL_PATH: str = "/opt/diviqra/guard/service/models/distilbert-guard.onnx"
 
     LOG_LEVEL: str = "INFO"
 

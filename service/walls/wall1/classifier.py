@@ -47,7 +47,7 @@ def _infer(text: str) -> float:
         text,
         return_tensors="np",
         truncation=True,
-        max_length=512,
+        max_length=256,
         padding="max_length",
     )
     ort_inputs = {
@@ -68,7 +68,7 @@ async def scan(request: ScanRequest) -> WallResult:
         return WallResult()
 
     try:
-        score = _infer(request.text[:512])
+        score = _infer(request.text[:256])
         score = round(score, 3)
 
         if score >= 0.70:
