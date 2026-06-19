@@ -51,3 +51,5 @@ logs/
 
 # Redis dump
 dump.rdb
+classifier/data/
+classifier/models/
