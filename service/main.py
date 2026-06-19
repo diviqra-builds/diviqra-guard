@@ -149,8 +149,8 @@ async def get_stats(
     period_map = {"24h": "1 day", "7d": "7 days", "30d": "30 days"}
     interval = period_map.get(period, "1 day")
 
-    where = "created_at >= NOW() - INTERVAL :interval"
-    params: dict = {"interval": interval}
+    where = f"created_at >= NOW() - INTERVAL '{interval}'"
+    params: dict = {}
     if company_id:
         where += " AND company_id = :company_id"
         params["company_id"] = company_id
