@@ -49,7 +49,7 @@ User Input / Agent Output
 ## Component Map
 
 ```
-/opt/diviqra/guard/
+./
 ├── diviqra_guard/      PyPI SDK (httpx client)
 ├── service/            FastAPI service :7008
 │   ├── main.py         API endpoints
