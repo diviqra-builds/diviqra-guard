@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import structlog
-from fastapi import Depends, FastAPI, HTTPException, Query, Security
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, Security
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -18,10 +19,17 @@ from service.models import (
     ScanResponse,
     StatsQuery,
 )
+from service.scan_quota import (
+    authenticate_scan_request,
+    charge_scan_usage,
+    next_month_reset_iso,
+    quota_exceeded_body,
+)
 from service.scanner import scan as run_scan
 from routers import webhooks as webhooks_router
 from routers import sse as sse_router
 from routers import billing as billing_router
+from routers import whatsapp as whatsapp_router
 
 log = structlog.get_logger()
 
@@ -50,6 +58,7 @@ app = FastAPI(
 app.include_router(webhooks_router.router)
 app.include_router(sse_router.router)
 app.include_router(billing_router.router)
+app.include_router(whatsapp_router.router)
 
 
 async def get_session() -> AsyncSession:
@@ -82,17 +91,35 @@ async def health():
 
 
 # ── Scan ──────────────────────────────────────────────────────
-@app.post("/v1/scan", response_model=ScanResponse, tags=["scan"])
+@app.post("/v1/scan", tags=["scan"], response_model=None)
 async def scan_endpoint(
     request: ScanRequest,
-    _: AuthDep,
+    response: Response,
     session: SessionDep,
-) -> ScanResponse:
+    credentials: HTTPAuthorizationCredentials = Security(_bearer),
+) -> ScanResponse | JSONResponse:
+    auth_ctx = await authenticate_scan_request(credentials, session)
+
+    company_id = request.company_id
+    if not auth_ctx.is_internal:
+        company_id = auth_ctx.company_id  # authenticated identity wins over client-supplied field
+
+        if auth_ctx.scans_used_month >= auth_ctx.scans_limit:
+            return JSONResponse(
+                status_code=429,
+                content=quota_exceeded_body(auth_ctx),
+                headers={
+                    "X-RateLimit-Limit": str(auth_ctx.scans_limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": next_month_reset_iso(),
+                },
+            )
+
     result = await run_scan(request)
 
     await write_event(
         session,
-        company_id=request.company_id,
+        company_id=company_id,
         agent_type=request.agent_type,
         direction=request.direction,
         action=result.action,
@@ -105,6 +132,13 @@ async def scan_endpoint(
         language=request.language,
         latency_ms=result.latency_ms,
     )
+
+    if not auth_ctx.is_internal:
+        await charge_scan_usage(session, auth_ctx)
+        used_after = auth_ctx.scans_used_month + 1
+        response.headers["X-RateLimit-Limit"] = str(auth_ctx.scans_limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, auth_ctx.scans_limit - used_after))
+        response.headers["X-RateLimit-Reset"] = next_month_reset_iso()
 
     return result
 

@@ -47,5 +47,12 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""  # Set via environment variable
     GUARD_FROM_EMAIL: str = "Diviqra Guard <guard@diviqra.com>"
 
+    # WhatsApp middleware — Meta Cloud API
+    META_GRAPH_API_VERSION: str = "v19.0"
+    META_GRAPH_BASE_URL: str = "https://graph.facebook.com"
+    META_WHATSAPP_ACCESS_TOKEN: str = ""  # Set via environment variable
+    META_APP_SECRET: str = ""  # Set via environment variable — signs X-Hub-Signature-256
+    WHATSAPP_PRICE_INR_PAISE: int = 299_900  # Rs 2,999/number/month
+
 
 settings = Settings()

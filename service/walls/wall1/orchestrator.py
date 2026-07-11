@@ -26,10 +26,8 @@ async def scan(request: ScanRequest) -> WallResult:
     # Scan both original AND normalised — catches hinglish after normalisation
     normalised_request = request.model_copy(update={"text": normalised_text})
 
-    # Add normalisation flags to threats if confusables/encoding found
+    # Only flag normalisation if it actually changed something suspicious
     extra_threats: list[str] = []
-    if norm_flags:
-        extra_threats.append("normalisation_" + "_".join(norm_flags[:2]))
 
     # ── Wall 1: Fast classification ───────────────────────────────────────────
     # Scan normalised request + original for hindi patterns

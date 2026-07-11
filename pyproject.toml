@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "diviqra-guard"
-version = "1.0.2"
+version = "1.0.3"
 description = "LLM firewall for AI agents — by Diviqra"
 readme = "README.md"
 license = {text = "MIT"}
@@ -44,6 +44,7 @@ service = [
     "transformers>=4.40",
     "structlog>=24.0",
     "stripe>=15.0",
+    "python-jose[cryptography]>=3.3",
 ]
 redteam = [
     "celery[redis]>=5.3",
@@ -78,7 +79,7 @@ include = ["diviqra_guard*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=service --cov=diviqra_guard --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=service --cov=diviqra_guard --cov=routers --cov-report=term-missing --cov-fail-under=80"
 
 [tool.coverage.run]
 omit = ["tests/*", "classifier/*", "redteam/*"]
