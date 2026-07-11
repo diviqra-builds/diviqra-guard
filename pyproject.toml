@@ -43,6 +43,7 @@ service = [
     "onnxruntime>=1.18",
     "transformers>=4.40",
     "structlog>=24.0",
+    "stripe>=15.0",
 ]
 redteam = [
     "celery[redis]>=5.3",

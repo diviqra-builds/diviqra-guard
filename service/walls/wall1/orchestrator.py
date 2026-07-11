@@ -4,7 +4,7 @@ import asyncio
 from service.models import ScanRequest, WallResult
 from service.walls.wall0 import normaliser as wall0_normaliser
 from service.walls.wall0 import entropy as wall0_entropy
-from service.walls.wall1 import classifier, hindi, pii, ratelimiter, rules, behavioural
+from service.walls.wall1 import classifier, hindi, pii, ratelimiter, rules, behavioural, semantic_drift
 
 
 async def scan(request: ScanRequest) -> WallResult:
@@ -41,6 +41,7 @@ async def scan(request: ScanRequest) -> WallResult:
         ratelimiter.check(request),
         classifier.scan(normalised_request),
         behavioural.scan(normalised_request),
+        semantic_drift.scan(normalised_request),
     )
 
     # Aggregate: highest score wins, collect all threats

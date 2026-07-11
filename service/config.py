@@ -36,13 +36,16 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: str = ""  # Set via environment variable
     RAZORPAY_WEBHOOK_SECRET: str = ""  # Set via environment variable
 
-
-
     # Stripe — USD billing for international customers
     STRIPE_SECRET_KEY: str = ""  # Set via environment variable
     STRIPE_PUBLISHABLE_KEY: str = ""  # Set via environment variable
     STRIPE_WEBHOOK_SECRET: str = ""  # Set via environment variable
     STRIPE_PRO_PRICE_ID: str = ""  # price_... from Stripe dashboard
     STRIPE_ENTERPRISE_PRICE_ID: str = ""  # price_... from Stripe dashboard
+
+    # Transactional email (upgrade notifications)
+    RESEND_API_KEY: str = ""  # Set via environment variable
+    GUARD_FROM_EMAIL: str = "Diviqra Guard <guard@diviqra.com>"
+
 
 settings = Settings()
