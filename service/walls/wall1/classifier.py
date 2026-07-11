@@ -62,6 +62,10 @@ def _infer(text: str) -> float:
 
 
 async def scan(request: ScanRequest) -> WallResult:
+    # Gated off until the model is retrained — see settings.CLASSIFIER_ENABLED.
+    if not settings.CLASSIFIER_ENABLED:
+        return WallResult()
+
     _load()
 
     if not _available:

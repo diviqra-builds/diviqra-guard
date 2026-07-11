@@ -12,6 +12,13 @@ class ScanRequest(BaseModel):
     company_id: str = ""
     profile: Literal["strict", "balanced", "permissive"] = "balanced"
     language: Literal["en", "hi", "mixed"] = "en"
+    # Traffic-type signal for context-aware thresholds. When omitted (e.g. external
+    # SDK callers), the customer's `profile` thresholds are used instead.
+    #   user_input   — external user text, full sensitivity
+    #   agent_prompt — agent-generated prompt, semi-trusted
+    #   web_scrape   — scraped web content, lenient
+    #   llm_response — LLM output, semi-trusted
+    context: Literal["user_input", "agent_prompt", "web_scrape", "llm_response"] | None = None
 
 
 class ScanResponse(BaseModel):

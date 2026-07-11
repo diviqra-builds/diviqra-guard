@@ -40,16 +40,7 @@ INJECTION_MEDIUM = [
     ]
 ]
 
-# ── LLM07 System Prompt Leak ─────────────────────────────────────────────────
-
-SYSTEM_PROMPT_LEAK = [
-    re.compile(p, re.IGNORECASE) for p in [
-        r"(what|show|tell|reveal|print|output|display)\s+(is\s+)?(your\s+)?"
-        r"(system\s+prompt|initial\s+instructions?|base\s+prompt)",
-        r"(output|print|display|repeat)\s+(your\s+)?(initial|full|original)\s+(prompt|instructions?)",
-        r"confirm\s+(your\s+)?(system|base)\s+(prompt|instructions?)",
-    ]
-]
+# ── LLM07 System Prompt Leak (merged below) ─────────────────────────────────
 
 # ── LLM02 Credentials ────────────────────────────────────────────────────────
 
@@ -119,6 +110,26 @@ SYSTEM_PROMPT_LEAK = [
         r"show.*your.*(?:prompt|instruction|guideline)",
         r"reveal.*your.*(?:prompt|instruction|system)",
         r"tell me your.*(?:prompt|instruction|rule)",
+        r"(what|show|tell|reveal|print|output|display|repeat)\s+(is\s+)?(your\s+)?(system\s+prompt|initial\s+instructions?|base\s+prompt|full\s+prompt)",
+        r"(output|print|display|repeat)\s+(your\s+)?(initial|full|original)\s+(prompt|instructions?)",
+        r"what\s+(instructions?|prompt)\s+were\s+you\s+given",
+        r"tell\s+me\s+your\s+(base|initial|original|system)\s+prompt",
+        r"(show|give|print)\s+me\s+your\s+(instructions?|prompt|rules?|guidelines?)",
+    ]
+]
+
+# ── Tool Misuse ───────────────────────────────────────────────────────────────
+TOOL_MISUSE = [
+    re.compile(p, re.IGNORECASE) for p in [
+        r"(modify|change|alter|edit)\s+.*(gstin|gst|invoice|tax)\s+.*(avoid|fake|fraud|hide|bypass)",
+        r"(fake|forged?|fraudulent)\s+(gst|gstin|invoice|receipt|bill)",
+        r"(override|bypass|skip)\s+.*(gst|tax|approval|review|validation)",
+        r"push\s+(directly\s+)?to\s+main\s+(branch\s+)?(without|bypassing)\s+(review|approval|tests?|checks?)",
+        r"subprocess.*(?:run|exec|shell|bash|curl|wget)",
+        r"(?:curl|wget|bash|sh)\s+.*(?:evil|malicious|remote|http)",
+        r"shell\s*\.\s*sh|bash\s*\|\s*bash|sh\s*\|\s*sh",
+        r"(run|execute)\s+.*\|\s*(bash|sh|zsh|cmd)",
+        r"os\.(system|popen|exec)|subprocess\.(run|call|Popen)",
     ]
 ]
 
@@ -156,6 +167,10 @@ async def scan(request: ScanRequest) -> WallResult:
         matches.append(m)
 
     m = _check_patterns(text, PII_EXTRACTION, 0.90, "pii_extraction", "pii_request")
+    if m:
+        matches.append(m)
+
+    m = _check_patterns(text, TOOL_MISUSE, 0.92, "tool_misuse", "tool_misuse")
     if m:
         matches.append(m)
 

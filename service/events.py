@@ -35,6 +35,7 @@ async def write_event(
     language: str,
     latency_ms: int,
 ) -> str:
+    event_id = str(uuid.uuid4())
     try:
         result = await session.execute(
             INSERT_EVENT,
@@ -55,8 +56,44 @@ async def write_event(
         )
         await session.commit()
         row = result.fetchone()
-        return str(row[0]) if row else str(uuid.uuid4())
+        if row:
+            event_id = str(row[0])
     except Exception as exc:
         log.error("events.write_failed", error=str(exc))
         await session.rollback()
-        return str(uuid.uuid4())
+        return event_id
+
+    # Build event payload for SSE + webhooks
+    event_data = {
+        "id": event_id,
+        "company_id": company_id,
+        "agent_type": agent_type,
+        "direction": direction,
+        "action": action,
+        "score": score,
+        "threats": threats,
+        "reason": reason,
+        "wall_triggered": wall_triggered,
+        "layer_triggered": layer_triggered,
+        "language": language,
+        "latency_ms": latency_ms,
+    }
+
+    # SSE — publish to Redis (non-blocking, fire and forget)
+    try:
+        from routers.sse import publish_event
+        import asyncio
+        asyncio.create_task(publish_event(company_id, event_data))
+    except Exception as exc:
+        log.warning("events.sse_publish_failed", error=str(exc))
+
+    # Webhooks — fire on block or warn (non-blocking)
+    if action in ("block", "warn"):
+        try:
+            from routers.webhooks import fire_webhooks
+            import asyncio
+            asyncio.create_task(fire_webhooks(company_id, action, event_data))
+        except Exception as exc:
+            log.warning("events.webhook_fire_failed", error=str(exc))
+
+    return event_id

@@ -10,7 +10,7 @@ from .client import Guard
 from .exceptions import GuardBlockedError, GuardConnectionError, GuardTimeoutError
 from .models import ScanResult
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __all__ = [
     "Guard",
     "AsyncGuard",

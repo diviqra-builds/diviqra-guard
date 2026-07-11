@@ -19,10 +19,13 @@ from service.models import (
     StatsQuery,
 )
 from service.scanner import scan as run_scan
+from routers import webhooks as webhooks_router
+from routers import sse as sse_router
+from routers import billing as billing_router
 
 log = structlog.get_logger()
 
-_engine = create_async_engine(settings.DATABASE_URL, pool_size=10, max_overflow=20)
+_engine = create_async_engine(settings.DATABASE_URL, pool_size=10, max_overflow=20, pool_recycle=300, pool_pre_ping=True)
 _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
 _bearer = HTTPBearer()
@@ -43,6 +46,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mount new routers
+app.include_router(webhooks_router.router)
+app.include_router(sse_router.router)
+app.include_router(billing_router.router)
+
 
 async def get_session() -> AsyncSession:
     async with _session_factory() as session:
@@ -58,15 +66,22 @@ AuthDep = Annotated[None, Depends(_require_auth)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-# ── Public ────────────────────────────────────────────────────────────────────
+# ── Inject session into routers ───────────────────────────────
+# Override the lambda placeholder deps in webhook/billing routers
+async def _get_session_override() -> AsyncSession:
+    async with _session_factory() as session:
+        yield session
 
+app.dependency_overrides[lambda: None] = _get_session_override
+
+
+# ── Public ────────────────────────────────────────────────────
 @app.get("/health", tags=["system"])
 async def health():
     return {"status": "ok", "service": "diviqra-guard", "version": settings.VERSION}
 
 
-# ── Scan ──────────────────────────────────────────────────────────────────────
-
+# ── Scan ──────────────────────────────────────────────────────
 @app.post("/v1/scan", response_model=ScanResponse, tags=["scan"])
 async def scan_endpoint(
     request: ScanRequest,
@@ -94,8 +109,7 @@ async def scan_endpoint(
     return result
 
 
-# ── Events ────────────────────────────────────────────────────────────────────
-
+# ── Events ────────────────────────────────────────────────────
 @app.get("/v1/events", tags=["events"])
 async def list_events(
     _: AuthDep,
@@ -137,8 +151,7 @@ async def list_events(
     return {"total": total, "items": items}
 
 
-# ── Stats ─────────────────────────────────────────────────────────────────────
-
+# ── Stats ─────────────────────────────────────────────────────
 @app.get("/v1/stats", tags=["stats"])
 async def get_stats(
     _: AuthDep,
@@ -203,19 +216,14 @@ async def _top_threats(session: AsyncSession, where: str, params: dict) -> list[
     return [{"threat": row.threat, "count": row.count} for row in result]
 
 
-# ── Red Team ──────────────────────────────────────────────────────────────────
-
+# ── Red Team ──────────────────────────────────────────────────
 @app.post("/v1/redteam/run", response_model=RedTeamRunResponse, tags=["redteam"])
 async def start_redteam(request: RedTeamRunRequest, _: AuthDep):
     import asyncio
-
     from redteam.runner import run as redteam_run
 
-    run_id_future = asyncio.create_task(
-        redteam_run(mode=request.mode, agent_type=request.agent_type)
-    )
-    # Fire and forget — return immediately
     run_id = str(__import__("uuid").uuid4())
+    asyncio.create_task(redteam_run(mode=request.mode, agent_type=request.agent_type))
     log.info("redteam.started", mode=request.mode, agent_type=request.agent_type)
     return RedTeamRunResponse(run_id=run_id, status="started")
 
