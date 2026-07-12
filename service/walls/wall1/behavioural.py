@@ -5,7 +5,8 @@ Wall 1 — Behavioural Fingerprinter.
 Detects multi-turn attacks that look innocent message-by-message
 but form a malicious pattern across the conversation.
 
-Proprietary to Diviqra Guard. No competitor does this.
+Rare among self-hosted / open-source guardrails — LLM Guard, Vigil, and
+Rebuff are single-message scanners with no cross-turn state.
 
 Example attack this catches:
   Turn 1: "What can you do?"               → capability_probe
